@@ -1,0 +1,78 @@
+version: '3'
+
+# .env ファイルから環境変数を読み込む
+dotenv: ['.env']
+
+tasks:
+  # タスクの指定がなければタスク一覧を出力する
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  # Discord のサーバーに登録されたコマンド一覧を出力する
+  discord:commands:list:
+    desc: 'List all commands'
+    silent: true
+    cmds:
+      - |
+        curl -s -X GET "https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${DISCORD_SERVER_ID}/commands" \
+          -H "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
+          | jq '.[]'
+
+  ###################################################
+  # Task for hello command
+  ##################################################
+  # hello コマンドを削除する
+  discord:command:delete:hello:
+    desc: 'Delete hello command'
+    cmds:
+      - task: discord:command:delete
+        vars:
+          cmd_name: 'hello'
+
+  # hello コマンドを登録する
+  discord:command:register:hello:
+    desc: 'Register hello command'
+    cmds:
+      - task: discord:command:register
+        vars:
+          cmd_name: 'hello'
+          cmd_desc: '挨拶をします'
+
+  ###################################################
+  # Internal tasks
+  ##################################################
+  # Discord のサーバーから指定したコマンドを削除する
+  discord:command:delete:
+    internal: true
+    silent: true
+    vars:
+      cmd_name: '{{.cmd_name}}'
+    cmds:
+      - |
+        export DISCORD_CMD_ID=$(
+          curl -s -X GET "https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${DISCORD_SERVER_ID}/commands" \
+          -H "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
+          | jq -r '.[] | select(.name == "{{.cmd_name}}") | .id'
+        )
+        curl -X DELETE "https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${DISCORD_SERVER_ID}/commands/${DISCORD_CMD_ID}" \
+          -H "Authorization: Bot ${DISCORD_BOT_TOKEN}"
+
+  # Discord のサーバーに対して指定したコマンドを登録する
+  discord:command:register:
+    internal: true
+    silent: true
+    vars:
+      cmd_name: '{{.cmd_name}}'
+    cmds:
+      - |
+        curl -s -X POST "https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${DISCORD_SERVER_ID}/commands" \
+          -H "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "{{.cmd_name}}",
+            "type": 1,
+            "description": "{{.cmd_desc}}"
+          }' \
+          | jq '.'
