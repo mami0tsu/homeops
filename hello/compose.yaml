@@ -1,0 +1,19 @@
+name: hello
+
+services:
+  app:
+    build:
+      context: .
+      target: local
+    image: hello:local
+    pull_policy: build
+    ports:
+      - 8080
+
+  curl:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      app:
+        condition: service_started
+        restart: true
+    command: ["http://app:8080/2015-03-31/functions/function/invocations", "-d", "{}"]
