@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -36,19 +37,21 @@ type Schedule struct {
 }
 
 func loadConfig(ctx context.Context) (Config, error) {
-	rules := []ssmwrap.ExportRule{
-		{
-			Path:   "/dev/remind/discord/*",
-			Prefix: "DISCORD_",
-		},
-		{
-			Path:   "/dev/remind/notion/*",
-			Prefix: "NOTION_",
-		},
-	}
-	if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
-		slog.Error("failed to export parameters", slog.Any("error", err))
-		return Config{}, err
+	if appEnv := os.Getenv("APP_ENV"); appEnv != "local" {
+		rules := []ssmwrap.ExportRule{
+			{
+				Path:   fmt.Sprintf("/%s/remind/discord/*", appEnv),
+				Prefix: "DISCORD_",
+			},
+			{
+				Path:   fmt.Sprintf("/%s/remind/notion/*", appEnv),
+				Prefix: "NOTION_",
+			},
+		}
+		if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
+			slog.Error("failed to export parameters", slog.Any("error", err))
+			return Config{}, err
+		}
 	}
 
 	var cfg Config

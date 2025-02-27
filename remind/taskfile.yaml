@@ -17,7 +17,7 @@ tasks:
         sh: aws ecr describe-repositories --repository-names {{.NAME}} --query 'repositories[0].repositoryUri' --output text
       IMAGE_TAG: 'latest'
     cmds:
-      - task: image:build:final
+      - task: image:build:final:prd
         vars:
           IMAGE: '{{.IMAGE}}'
           IMAGE_TAG: '{{.IMAGE_TAG}}'
@@ -34,7 +34,7 @@ tasks:
   app:test:unit:
     desc: 'Execute go test with container image'
     cmds:
-      - task: image:build:test
+      - task: image:build:test:local
         vars:
           IMAGE: '{{.NAME}}'
           IMAGE_TAG: 'test'
@@ -42,23 +42,25 @@ tasks:
   app:test:vet:
     desc: 'Execute go vet with container image'
     cmds:
-      - task: image:build:vet
+      - task: image:build:vet:local
         vars:
           IMAGE: '{{.NAME}}'
           IMAGE_TAG: 'vet'
 
-  image:build:*:
+  image:build:*:*:
     internal: true
     vars:
       IMAGE: '{{.IMAGE}}'
       IMAGE_TAG: '{{.IMAGE_TAG}}'
       TARGET_PLATFORM: 'linux/arm64'
       TARGET_STAGE: '{{index .MATCH 0}}'
+      APP_ENV: '{{index .MATCH 1}}'
     cmds:
       - |
         docker image build \
           --platform {{.TARGET_PLATFORM}} \
           --target {{.TARGET_STAGE}} \
+          --build-arg APP_ENV={{.APP_ENV}} \
           -t {{.IMAGE}}:{{.IMAGE_TAG}} .
 
   image:push:
@@ -83,4 +85,3 @@ tasks:
         aws lambda update-function-code \
           --function-name {{.NAME}}\
           --image-uri {{.IMAGE}}:{{.IMAGE_TAG}}
-
