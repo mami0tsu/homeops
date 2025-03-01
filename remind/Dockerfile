@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1
-ARG APP_ENV=local
 ARG GO_VERSION=1.23.1
 ARG TARGET_ARCH=arm64
 ARG TARGET_OS=linux
@@ -33,7 +32,6 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     go test
 
 FROM public.ecr.aws/lambda/provided:al2023 AS local
-ENV APP_ENV=${APP_ENV}
 COPY --from=build /usr/local/bin/app /usr/local/bin/remind
 ENTRYPOINT ["/usr/local/bin/aws-lambda-rie"]
 CMD ["remind"]
@@ -41,6 +39,5 @@ CMD ["remind"]
 # TODO: 実行時エラー "Runtime.InvalidEntrypoint" の原因を調査する
 # FROM gcr.io/distroless/static-debian12:nonroot-${TARGET_ARCH} AS final
 FROM public.ecr.aws/lambda/provided:al2023 AS final
-ENV APP_ENV=${APP_ENV}
 COPY --from=build /usr/local/bin/app /usr/local/bin/remind
 ENTRYPOINT ["remind"]

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"log/slog"
@@ -37,7 +38,14 @@ type Schedule struct {
 }
 
 func loadConfig(ctx context.Context) (Config, error) {
-	if appEnv := os.Getenv("APP_ENV"); appEnv != "local" {
+	useSSM, err := strconv.ParseBool(os.Getenv("USE_SSM"))
+	if err != nil {
+		slog.Error("failed to parse USE_SSM", slog.Any("error", err))
+		return Config{}, err
+	}
+
+	if useSSM {
+		appEnv := os.Getenv("APP_ENV")
 		rules := []ssmwrap.ExportRule{
 			{
 				Path:   fmt.Sprintf("/%s/remind/discord/*", appEnv),
