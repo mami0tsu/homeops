@@ -1,0 +1,91 @@
+version: '3'
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  deploy:
+    desc: 'Build and push the container image, then update the Lambda function.'
+    vars:
+      app_env: '{{.app_env}}'
+      app_name: '{{.app_name}}'
+      git_commit_hash:
+        sh: git rev-parse --short HEAD
+      image:
+        sh: aws ecr describe-repositories --repository-names '{{.app_env}}-{{.app_name}}' --query 'repositories[0].repositoryUri' --output text
+      image_tag: '{{.git_commit_hash}}'
+    cmds:
+      - task: image:build:final
+        vars:
+          git_commit_hash: '{{.git_commit_hash}}'
+          image: '{{.image}}'
+          image_tag: '{{.image_tag}}'
+      - task: image:push
+        vars:
+          aws_region: '{{.aws_region}}'
+          image: '{{.image}}'
+          image_tag: '{{.image_tag}}'
+      - task: lambda:update
+        vars:
+          image: '{{.image}}'
+          image_tag: '{{.image_tag}}'
+          function_name: '{{.app_env}}-{{.app_name}}'
+
+  test:unit:
+    desc: 'Execute "go test" on the container image.'
+    aliases: [test]
+    cmds:
+      - task: image:build:test
+        vars:
+          image: '{{.app_env}}-{{.app_name}}'
+          image_tag: 'test'
+
+  test:vet:
+    desc: 'Execute "go vet" on the container image.'
+    cmds:
+      - task: image:build:vet
+        vars:
+          image: '{{.app_env}}-{{.app_name}}'
+          image_tag: 'vet'
+
+  image:build:*:
+    internal: true
+    vars:
+      git_commit_hash: '{{.git_commit_hash}}'
+      image: '{{.image}}'
+      image_tag: '{{.image_tag}}'
+      target_platform: '{{.target_platform | default "linux/arm64"}}'
+      target_stage: '{{index .MATCH 0}}'
+    cmds:
+      - |
+        docker image build \
+          --platform {{.target_platform}} \
+          --target {{.target_stage}} \
+          --build-arg GIT_COMMIT_HASH={{.git_commit_hash}} \
+          -t {{.image}}:{{.image_tag}} .
+
+  image:push:
+    internal: true
+    vars:
+      aws_region: '{{.aws_region | default "ap-northeast-1"}}'
+      image: '{{.image}}'
+      image_tag: '{{.image_tag}}'
+    cmds:
+      - |
+        aws ecr get-login-password --region {{.aws_region}} \
+          | docker login --username AWS --password-stdin {{.image}}:{{.image_tag}} \
+          && docker push {{.image}}:{{.image_tag}}
+
+  lambda:update:
+    internal: true
+    vars:
+      image: '{{.image}}'
+      image_tag: '{{.image_tag}}'
+      function_name: '{{.function_name}}'
+    cmds:
+      - |
+        aws lambda update-function-code \
+          --function-name {{.function_name}}\
+          --image-uri {{.image}}:{{.image_tag}}
