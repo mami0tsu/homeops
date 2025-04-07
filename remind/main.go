@@ -100,12 +100,12 @@ func handleRequest(ctx context.Context) error {
 	jst, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		slog.Error("failed to load JST location, using fixed offset", "err", err)
-		jst = time.FixedZone("JST", 9*3600)
+		jst = time.FixedZone("JST", 9*60*60)
 	}
-	now := time.Now().In(jst)
+	nowJST := time.Now().In(jst)
 
 	var schedules []Schedule
-	for _, t := range []time.Time{now, now.Add(time.Hour * 24)} {
+	for _, t := range []time.Time{nowJST, nowJST.Add(time.Hour * 24)} {
 		events, err := fetchEvents(ctx, cfg, t)
 		if err != nil {
 			slog.Error("failed to fetch events from Notion", "error", err)

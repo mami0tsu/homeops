@@ -64,6 +64,7 @@ tasks:
           --platform {{.target_platform}} \
           --target {{.target_stage}} \
           --build-arg GIT_COMMIT_HASH={{.git_commit_hash}} \
+          -t {{.image}}:latest \
           -t {{.image}}:{{.image_tag}} .
 
   image:push:
