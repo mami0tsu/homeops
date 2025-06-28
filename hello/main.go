@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -69,20 +70,29 @@ func NewLogger() *slog.Logger {
 }
 
 func loadConfig(ctx context.Context) (Config, error) {
-	rules := []ssmwrap.ExportRule{
-		{
-			Path:   "/dev/discord/public_key",
-			Prefix: "DISCORD_",
-		},
-	}
-	if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
-		slog.Error("failed to export parameters", slog.Any("error", err))
+	useSSM, err := strconv.ParseBool(os.Getenv("USE_SSM"))
+	if err != nil {
+		slog.Error("failed to parse USE_SSM", slog.Any("error", err))
 		return Config{}, err
+	}
+
+	if useSSM {
+		appEnv := os.Getenv("APP_ENV")
+		rules := []ssmwrap.ExportRule{
+			{
+				Path:   fmt.Sprintf("/%s/hello/discord/*", appEnv),
+				Prefix: "DISCORD_",
+			},
+		}
+		if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
+			slog.Error("failed to get parameters from SSM", slog.Any("error", err))
+			return Config{}, err
+		}
 	}
 
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
-		slog.Error("failed to parse environments", slog.Any("error", err))
+		slog.Error("failed to parse environment variables", slog.Any("error", err))
 		return Config{}, err
 	}
 
@@ -101,8 +111,9 @@ func handleRequest(ctx context.Context, req events.APIGatewayProxyRequest) (even
 
 	slog.Info("received request", slog.Any("request", req))
 
+	// Discord による署名を検証する
 	if err := verifySignature(cfg, req); err != nil {
-		slog.Error("invalid request signature", slog.Any("error", err))
+		slog.Error("failed to verify request signature", slog.Any("error", err))
 		return createResponse(400, "invalid request"), err
 	}
 
@@ -153,8 +164,7 @@ func verifySignature(cfg Config, req events.APIGatewayProxyRequest) error {
 func parseRequest(body string) (Request, error) {
 	var request Request
 	if err := json.Unmarshal([]byte(body), &request); err != nil {
-		slog.Error("failed to parse request body", slog.Any("error", err))
-		return Request{}, err
+		return Request{}, fmt.Errorf("failed to parse request body")
 	}
 
 	return request, nil
@@ -190,10 +200,9 @@ func handleCommand(req Request) (Response, error) {
 	}
 }
 
-func createResponse(statusCode int, body interface{}) events.APIGatewayProxyResponse {
+func createResponse(statusCode int, body any) events.APIGatewayProxyResponse {
 	respBody, err := json.Marshal(body)
 	if err != nil {
-		slog.Error("failed to marshal response", slog.Any("error", err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 			Body:       "failed to create response",

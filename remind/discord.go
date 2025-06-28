@@ -32,16 +32,17 @@ func postScheduleToDiscord(cfg Config, schedules []Schedule) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := dg.WebhookDelete(webhook.ID); err != nil {
+			slog.Error("failed to delete Webhook", "error", err)
+		}
+	}()
 
 	_, err = dg.WebhookExecute(webhook.ID, webhook.Token, false, &discordgo.WebhookParams{
 		Embeds: embeds,
 	})
 	if err != nil {
 		return err
-	}
-
-	if err := dg.WebhookDelete(webhook.ID); err != nil {
-		slog.Warn("failed to delete webhook", "error", err)
 	}
 
 	return nil

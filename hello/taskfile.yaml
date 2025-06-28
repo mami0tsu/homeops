@@ -1,86 +1,13 @@
 version: '3'
 
-vars:
-  NAME: 'hello'
-
-tasks:
-  default:
-    silent: true
-    cmds:
-      - task --list
-
-  app:deploy:
-    desc: 'Deploy Lambda function'
+includes:
+  dev:
+    taskfile: ../.task/taskfile.yaml
     vars:
-      AWS_REGION: 'ap-northeast-1'
-      IMAGE:
-        sh: aws ecr describe-repositories --repository-names {{.NAME}} --query 'repositories[0].repositoryUri' --output text
-      IMAGE_TAG: 'latest'
-    cmds:
-      - task: image:build:final
-        vars:
-          IMAGE: '{{.IMAGE}}'
-          IMAGE_TAG: '{{.IMAGE_TAG}}'
-      - task: image:push
-        vars:
-          AWS_REGION: '{{.AWS_REGION}}'
-          IMAGE: '{{.IMAGE}}'
-          IMAGE_TAG: '{{.IMAGE_TAG}}'
-      - task: lambda:update
-        vars:
-          IMAGE: '{{.IMAGE}}'
-          IMAGE_TAG: '{{.IMAGE_TAG}}'
-
-  app:test:unit:
-    desc: 'Execute go test with container image'
-    cmds:
-      - task: image:build:test
-        vars:
-          IMAGE: '{{.NAME}}'
-          IMAGE_TAG: 'test'
-
-  app:test:vet:
-    desc: 'Execute go vet with container image'
-    cmds:
-      - task: image:build:vet
-        vars:
-          IMAGE: '{{.NAME}}'
-          IMAGE_TAG: 'vet'
-
-  image:build:*:
-    internal: true
+      app_env: 'dev'
+      app_name: 'hello'
+  prd:
+    taskfile: ../.task/taskfile.yaml
     vars:
-      IMAGE: '{{.IMAGE}}'
-      IMAGE_TAG: '{{.IMAGE_TAG}}'
-      TARGET_PLATFORM: 'linux/arm64'
-      TARGET_STAGE: '{{index .MATCH 0}}'
-    cmds:
-      - |
-        docker image build \
-          --platform {{.TARGET_PLATFORM}} \
-          --target {{.TARGET_STAGE}} \
-          -t {{.IMAGE}}:{{.IMAGE_TAG}} .
-
-  image:push:
-    internal: true
-    vars:
-      AWS_REGION: '{{.AWS_REGION}}'
-      IMAGE: '{{.IMAGE}}'
-      IMAGE_TAG: '{{.IMAGE_TAG}}'
-    cmds:
-      - |
-        aws ecr get-login-password --region {{.AWS_REGION}} \
-          | docker login --username AWS --password-stdin {{.IMAGE}}:{{.IMAGE_TAG}} \
-          && docker push {{.IMAGE}}:{{.IMAGE_TAG}}
-
-  lambda:update:
-    internal: true
-    vars:
-      IMAGE: '{{.IMAGE}}'
-      IMAGE_TAG: '{{.IMAGE_TAG}}'
-    cmds:
-      - |
-        aws lambda update-function-code \
-          --function-name {{.NAME}}\
-          --image-uri {{.IMAGE}}:{{.IMAGE_TAG}}
-
+      app_env: 'prd'
+      app_name: 'hello'

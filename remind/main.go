@@ -57,14 +57,14 @@ func loadConfig(ctx context.Context) (Config, error) {
 			},
 		}
 		if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
-			slog.Error("failed to export parameters", slog.Any("error", err))
+			slog.Error("failed to get parameters from SSM", slog.Any("error", err))
 			return Config{}, err
 		}
 	}
 
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
-		slog.Error("failed to parse environments", slog.Any("error", err))
+		slog.Error("failed to parse environment variables", slog.Any("error", err))
 		return Config{}, err
 	}
 
@@ -99,7 +99,7 @@ func handleRequest(ctx context.Context) error {
 
 	jst, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
-		slog.Error("failed to load JST location, using fixed offset", "err", err)
+		slog.Warn("failed to load JST location, using fixed offset", "err", err)
 		jst = time.FixedZone("JST", 9*60*60)
 	}
 	nowJST := time.Now().In(jst)
@@ -116,8 +116,10 @@ func handleRequest(ctx context.Context) error {
 	slog.Info("succeeded to fetch events from Notion")
 
 	if err := postScheduleToDiscord(cfg, schedules); err != nil {
-		slog.Error("failed to post message to Discord", slog.Any("error", err))
+		slog.Error("failed to post events to Discord", slog.Any("error", err))
+		return err
 	}
+	slog.Info("succeeded to post events to Discord")
 
 	return nil
 }

@@ -6,3 +6,8 @@ includes:
     vars:
       app_env: 'dev'
       app_name: 'remind'
+  prd:
+    taskfile: ../.task/taskfile.yaml
+    vars:
+      app_env: 'prd'
+      app_name: 'remind'
