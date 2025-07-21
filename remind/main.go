@@ -23,13 +23,6 @@ type Config struct {
 	DiscordChannelID string `env:"DISCORD_CHANNEL_ID,required"`
 }
 
-type Event struct {
-	Name     string
-	Interval string    // e.g. Oneshot, Weekly, Monthly, Yearly
-	Start    time.Time // e.g. 2025-01-01
-	End      time.Time // e.g. 2025-12-31
-}
-
 type Events []Event
 
 type Schedule struct {
