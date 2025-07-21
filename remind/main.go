@@ -21,6 +21,9 @@ type Config struct {
 	DiscordBotName   string `env:"DISCORD_BOT_NAME,required"`
 	DiscordBotToken  string `env:"DISCORD_BOT_TOKEN,required"`
 	DiscordChannelID string `env:"DISCORD_CHANNEL_ID,required"`
+
+	GoogleCredentials   string `env:"GOOGLE_CREDENTIALS,required"`
+	GoogleSpreadsheetID string `env:"GOOGLE_SPREADSHEET_ID,required"`
 }
 
 type Events []Event
