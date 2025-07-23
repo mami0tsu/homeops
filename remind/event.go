@@ -13,7 +13,7 @@ type Event struct {
 }
 
 type EventSource interface {
-	Fetch(ctx context.Context) ([]Event, error)
+	Fetch(ctx context.Context, t time.Time) ([]Event, error)
 }
 
 type Client struct {
@@ -24,10 +24,10 @@ func NewClient(src EventSource) *Client {
 	return &Client{source: src}
 }
 
-func (c *Client) Do(ctx context.Context) ([]Event, error) {
-	events, err := c.source.Fetch(ctx)
+func (c *Client) Do(ctx context.Context, t time.Time) ([]Event, error) {
+	events, err := c.source.Fetch(ctx, t)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return events, nil

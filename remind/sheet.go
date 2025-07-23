@@ -41,7 +41,7 @@ func NewSheetSource(reader SheetDataReader, cfg *Config) *SheetSource {
 }
 
 // スプレッドシートからデータを取得した上でパースして返却する
-func (s *SheetSource) Fetch(ctx context.Context) ([]Event, error) {
+func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
 	resp, err := s.reader.GetValues(ctx, s.config.GoogleSpreadsheetID, "event!A:D")
 	if err != nil {
 		return nil, err
@@ -65,7 +65,9 @@ func (s *SheetSource) Fetch(ctx context.Context) ([]Event, error) {
 		events = append(events, e)
 	}
 
-	return events, nil
+	filtered := s.Filter(events, t)
+
+	return filtered, nil
 }
 
 func (s *SheetSource) ParseRow(r []interface{}) (Event, error) {
@@ -91,4 +93,17 @@ func (s *SheetSource) ParseRow(r []interface{}) (Event, error) {
 		Start:    startDate,
 		End:      endDate,
 	}, nil
+}
+
+func (s *SheetSource) Filter(events []Event, t time.Time) []Event {
+	var filtered []Event
+
+	for _, e := range events {
+		// tがStart以降（Startを含む）であり、かつEndの翌日より前（Endを含む）であることを条件にする
+		if !t.Before(e.Start) && t.Before(e.End.AddDate(0, 0, 1)) {
+			filtered = append(filtered, e)
+		}
+	}
+
+	return filtered
 }
