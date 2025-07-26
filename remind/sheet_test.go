@@ -184,7 +184,7 @@ func TestParseRow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := assert.New(t)
-			event, err := src.ParseRow(tt.row)
+			event, err := src.parseRow(tt.row)
 
 			if tt.expectError {
 				ta.Error(err)
@@ -241,7 +241,7 @@ func TestFilter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ta := assert.New(t)
-			filtered := src.Filter(tt.inputEvents, tt.targetTime)
+			filtered := src.filter(tt.inputEvents, tt.targetTime)
 
 			var filteredNames []string
 			for _, e := range filtered {

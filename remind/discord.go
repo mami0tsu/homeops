@@ -13,7 +13,10 @@ const (
 	gray  int = 0xcccccc
 )
 
-func postScheduleToDiscord(cfg Config, schedules []Schedule) error {
+func postScheduleToDiscord(cfg *Config, schedules []Schedule) error {
+	if schedules == nil {
+		return nil
+	}
 	var embeds []*discordgo.MessageEmbed
 	for _, s := range schedules {
 		embeds = append(embeds, createMessageEmbed(s))
@@ -44,6 +47,7 @@ func postScheduleToDiscord(cfg Config, schedules []Schedule) error {
 	if err != nil {
 		return err
 	}
+	slog.Info("succeeded to post events")
 
 	return nil
 }

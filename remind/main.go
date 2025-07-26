@@ -33,11 +33,11 @@ type Schedule struct {
 	Events
 }
 
-func loadConfig(ctx context.Context) (Config, error) {
+func loadConfig(ctx context.Context) (*Config, error) {
 	useSSM, err := strconv.ParseBool(os.Getenv("USE_SSM"))
 	if err != nil {
 		slog.Error("failed to parse USE_SSM", slog.Any("error", err))
-		return Config{}, err
+		return nil, err
 	}
 
 	if useSSM {
@@ -54,17 +54,17 @@ func loadConfig(ctx context.Context) (Config, error) {
 		}
 		if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
 			slog.Error("failed to get parameters from SSM", slog.Any("error", err))
-			return Config{}, err
+			return nil, err
 		}
 	}
 
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
 		slog.Error("failed to parse environment variables", slog.Any("error", err))
-		return Config{}, err
+		return nil, err
 	}
 
-	return cfg, nil
+	return &cfg, nil
 }
 
 func NewLogger() *slog.Logger {
@@ -87,35 +87,52 @@ func NewLogger() *slog.Logger {
 func handleRequest(ctx context.Context) error {
 	slog.SetDefault(NewLogger())
 
+	// 設定を読み込む
 	cfg, err := loadConfig(ctx)
 	if err != nil {
 		slog.Error("failed to load config", slog.Any("error", err))
 		return err
 	}
 
+	// 対象とする日付情報を作成する
 	jst, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		slog.Warn("failed to load JST location, using fixed offset", "err", err)
 		jst = time.FixedZone("JST", 9*60*60)
 	}
-	nowJST := time.Now().In(jst)
-
-	var schedules []Schedule
-	for _, t := range []time.Time{nowJST, nowJST.Add(time.Hour * 24)} {
-		events, err := fetchEvents(ctx, cfg, t)
-		if err != nil {
-			slog.Error("failed to fetch events from Notion", "error", err)
-			return err
-		}
-		schedules = append(schedules, Schedule{Date: t, Events: events})
+	now := time.Now().In(jst)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, jst)
+	dates := []time.Time{
+		today,
+		today.AddDate(0, 0, 1), // 実行日の翌日
 	}
-	slog.Info("succeeded to fetch events from Notion")
 
+	// イベント情報を取得するクライアントを作成する
+	srv, err := NewSheetsService(ctx, []byte(cfg.GoogleCredentials))
+	if err != nil {
+		slog.Error("failed to init Google Sheets service", slog.Any("error", err))
+		return err
+	}
+	r := &GoogleSheetReader{Service: srv}
+	src := NewSheetSource(r, cfg)
+	c := NewClient(src)
+
+	// イベント情報を取得する
+	var schedules []Schedule
+	for _, d := range dates {
+		events, err := c.Do(ctx, d)
+		if err != nil {
+			slog.Error("failed to get events", slog.Any("error", err))
+			continue
+		}
+		schedules = append(schedules, Schedule{Date: d, Events: events})
+	}
+
+	// イベント情報を Discord チャンネルに投稿する
 	if err := postScheduleToDiscord(cfg, schedules); err != nil {
 		slog.Error("failed to post events to Discord", slog.Any("error", err))
 		return err
 	}
-	slog.Info("succeeded to post events to Discord")
 
 	return nil
 }
