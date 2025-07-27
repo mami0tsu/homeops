@@ -115,6 +115,14 @@ func (s *SheetSource) parseValue(r []interface{}, index int) (string, error) {
 	return fmt.Sprintf("%v", r[index]), nil
 }
 
+func (s *SheetSource) parseInterval(r []interface{}, index int) (Interval, error) {
+	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
+		return -1, fmt.Errorf("failed to parse value from column")
+	}
+
+	return ParseInterval(fmt.Sprintf("%v", r[index]))
+}
+
 func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
 	name, err := s.parseValue(r, nameIdx)
 	if err != nil {

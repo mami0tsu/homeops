@@ -2,9 +2,49 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
+
+type Interval int
+
+const (
+	onetime Interval = iota
+	weekly
+	monthly
+	yearly
+)
+
+func (i Interval) String() string {
+	switch i {
+	case onetime:
+		return "Onetime"
+	case weekly:
+		return "Weekly"
+	case monthly:
+		return "Monthly"
+	case yearly:
+		return "Yearly"
+	default:
+		return "Unknown"
+	}
+}
+
+func ParseInterval(s string) (Interval, error) {
+	switch strings.ToLower(s) {
+	case "onetime":
+		return onetime, nil
+	case "weekly":
+		return weekly, nil
+	case "monthly":
+		return monthly, nil
+	case "yearly":
+		return yearly, nil
+	default:
+		return -1, fmt.Errorf("invalid interval: %s", s)
+	}
+}
 
 type Event struct {
 	Name      string
