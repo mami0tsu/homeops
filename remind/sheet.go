@@ -57,7 +57,7 @@ func NewSheetSource(reader SheetDataReader, cfg *Config) *SheetSource {
 
 // スプレッドシートからデータを取得した上でパースして返却する
 func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
-	resp, err := s.reader.GetValues(ctx, s.config.GoogleSpreadsheetID, "reminder!A:D")
+	resp, err := s.reader.GetValues(ctx, s.config.GoogleSpreadsheetID, "remind!A:D")
 	if err != nil {
 		return nil, err
 	}
