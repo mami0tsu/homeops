@@ -155,11 +155,11 @@ func TestParseRow(t *testing.T) {
 	}{
 		{
 			name:        "正常系/行が正常である場合",
-			row:         []interface{}{"Valid Event", "Daily", "2025/01/01", "2025/01/02"},
+			row:         []interface{}{"Valid Event", "Weekly", "2025/01/01", "2025/01/31"},
 			expectError: false,
 			expected: &Event{
 				Name:      "Valid Event",
-				Interval:  "Daily",
+				Interval:  weekly,
 				StartDate: time.Date(2025, 1, 1, 0, 0, 0, 0, tz),
 				EndDate:   time.Date(2025, 1, 2, 0, 0, 0, 0, tz),
 			},

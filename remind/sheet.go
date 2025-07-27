@@ -76,17 +76,12 @@ func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
 			// パースできない行はスキップする
 			continue
 		}
-		events = append(events, e)
-	}
-
-	var filtered []Event
-	for _, e := range events {
 		if e.isContain(t) && e.isMatch(t) {
-			filtered = append(filtered, e)
+			events = append(events, e)
 		}
 	}
 
-	return filtered, nil
+	return events, nil
 }
 
 func (s *SheetSource) parseDate(r []interface{}, index int) (time.Time, error) {
@@ -129,7 +124,7 @@ func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
 		return Event{}, err
 	}
 
-	interval, err := s.parseValue(r, intervalIdx)
+	interval, err := s.parseInterval(r, intervalIdx)
 	if err != nil {
 		return Event{}, err
 	}

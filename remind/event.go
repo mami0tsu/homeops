@@ -48,7 +48,7 @@ func ParseInterval(s string) (Interval, error) {
 
 type Event struct {
 	Name      string
-	Interval  string    // e.g. Onetime, Weekly, Monthly, Yearly
+	Interval  Interval  // e.g. Onetime, Weekly, Monthly, Yearly
 	StartDate time.Time // e.g. 2025/01/01
 	EndDate   time.Time // e.g. 2025/12/31
 }
@@ -67,14 +67,14 @@ func (e *Event) isContain(t time.Time) bool {
 }
 
 func (e *Event) isMatch(t time.Time) bool {
-	switch strings.ToLower(e.Interval) {
-	case "oneshot":
+	switch e.Interval {
+	case onetime:
 		return t.Equal(e.StartDate)
-	case "weekly":
+	case weekly:
 		return t.Weekday() == e.StartDate.Weekday()
-	case "monthly":
+	case monthly:
 		return t.Day() == e.StartDate.Day()
-	case "yearly":
+	case yearly:
 		return t.Month() == e.StartDate.Month() && t.Day() == e.StartDate.Day()
 	default:
 		return false
