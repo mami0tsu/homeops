@@ -31,7 +31,7 @@ func (i Interval) String() string {
 	}
 }
 
-func ParseInterval(s string) (Interval, error) {
+func parseInterval(s string) (Interval, error) {
 	switch strings.ToLower(s) {
 	case "onetime":
 		return onetime, nil
@@ -69,7 +69,7 @@ func (e *Event) isContain(t time.Time) bool {
 func (e *Event) isMatch(t time.Time) bool {
 	switch e.Interval {
 	case onetime:
-		return t.Equal(e.StartDate)
+		return t.Year() == e.StartDate.Year() && t.Month() == e.StartDate.Month() && t.Day() == e.StartDate.Day()
 	case weekly:
 		return t.Weekday() == e.StartDate.Weekday()
 	case monthly:

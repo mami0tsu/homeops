@@ -67,10 +67,8 @@ func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
 		return []Event{}, nil
 	}
 
-	dataRows := resp.Values[1:]
-
 	var events []Event
-	for _, r := range dataRows {
+	for _, r := range resp.Values[1:] {
 		e, err := s.parseRow(r)
 		if err != nil {
 			// パースできない行はスキップする
@@ -84,42 +82,8 @@ func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
 	return events, nil
 }
 
-func (s *SheetSource) parseDate(r []interface{}, index int) (time.Time, error) {
-	tz := time.FixedZone("JST", 9*60*60)
-	now := time.Now().In(tz)
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, tz)
-
-	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
-		return today, nil
-	}
-
-	dateStr := fmt.Sprintf("%v", r[index])
-	t, err := time.ParseInLocation("2006/01/02", dateStr, tz)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to parse date from column")
-	}
-
-	return t, nil
-}
-
-func (s *SheetSource) parseValue(r []interface{}, index int) (string, error) {
-	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
-		return "", fmt.Errorf("failed to parse value from column")
-	}
-
-	return fmt.Sprintf("%v", r[index]), nil
-}
-
-func (s *SheetSource) parseInterval(r []interface{}, index int) (Interval, error) {
-	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
-		return -1, fmt.Errorf("failed to parse value from column")
-	}
-
-	return ParseInterval(fmt.Sprintf("%v", r[index]))
-}
-
 func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
-	name, err := s.parseValue(r, nameIdx)
+	name, err := s.parseName(r, nameIdx)
 	if err != nil {
 		return Event{}, err
 	}
@@ -145,4 +109,43 @@ func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
 		StartDate: startDate,
 		EndDate:   endDate,
 	}, nil
+}
+
+func (s *SheetSource) parseName(r []interface{}, index int) (string, error) {
+	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
+		return "", fmt.Errorf("failed to parse value from column")
+	}
+
+	return fmt.Sprintf("%v", r[index]), nil
+}
+
+func (s *SheetSource) parseInterval(r []interface{}, index int) (Interval, error) {
+	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
+		return -1, fmt.Errorf("failed to parse value from column")
+	}
+
+	return parseInterval(fmt.Sprintf("%v", r[index]))
+}
+
+func (s *SheetSource) parseDate(r []interface{}, index int) (time.Time, error) {
+	tz := time.FixedZone("JST", 9*60*60)
+
+	if len(r) <= index || fmt.Sprintf("%v", r[index]) == "" {
+		switch index {
+		case startDateIdx:
+			return time.Date(1, 1, 1, 0, 0, 0, 0, tz), nil
+		case endDateIdx:
+			return time.Date(9999, 12, 31, 0, 0, 0, 0, tz), nil
+		default:
+			return time.Time{}, fmt.Errorf("failed to parse date from column")
+		}
+	}
+
+	dateStr := fmt.Sprintf("%v", r[index])
+	t, err := time.ParseInLocation("2006/01/02", dateStr, tz)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse date from column")
+	}
+
+	return t, nil
 }
