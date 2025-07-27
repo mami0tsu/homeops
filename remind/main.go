@@ -15,9 +15,6 @@ import (
 )
 
 type Config struct {
-	NotionAPIKey     string `env:"NOTION_API_KEY,required"`
-	NotionDatabaseID string `env:"NOTION_DATABASE_ID,required"`
-
 	DiscordBotName   string `env:"DISCORD_BOT_NAME,required"`
 	DiscordBotToken  string `env:"DISCORD_BOT_TOKEN,required"`
 	DiscordChannelID string `env:"DISCORD_CHANNEL_ID,required"`
@@ -26,11 +23,9 @@ type Config struct {
 	GoogleSpreadsheetID string `env:"GOOGLE_SPREADSHEET_ID,required"`
 }
 
-type Events []Event
-
 type Schedule struct {
-	Date time.Time
-	Events
+	Date   time.Time
+	Events []Event
 }
 
 func loadConfig(ctx context.Context) (*Config, error) {
@@ -48,8 +43,8 @@ func loadConfig(ctx context.Context) (*Config, error) {
 				Prefix: "DISCORD_",
 			},
 			{
-				Path:   fmt.Sprintf("/%s/remind/notion/*", appEnv),
-				Prefix: "NOTION_",
+				Path:   fmt.Sprintf("/%s/remind/google/*", appEnv),
+				Prefix: "GOOGLE_",
 			},
 		}
 		if err := ssmwrap.Export(ctx, rules, ssmwrap.ExportOptions{}); err != nil {
@@ -107,7 +102,7 @@ func handleRequest(ctx context.Context) error {
 		today.AddDate(0, 0, 1), // 実行日の翌日
 	}
 
-	// イベント情報を取得するクライアントを作成する
+	// イベント情報を取得するリソースを作成する
 	srv, err := NewSheetsService(ctx, []byte(cfg.GoogleCredentials))
 	if err != nil {
 		slog.Error("failed to init Google Sheets service", slog.Any("error", err))
@@ -115,16 +110,17 @@ func handleRequest(ctx context.Context) error {
 	}
 	r := &GoogleSheetReader{Service: srv}
 	src := NewSheetSource(r, cfg)
-	c := NewClient(src)
+	a := NewApp(src)
 
 	// イベント情報を取得する
 	var schedules []Schedule
 	for _, d := range dates {
-		events, err := c.Do(ctx, d)
+		events, err := a.source.Fetch(ctx, d)
 		if err != nil {
 			slog.Error("failed to get events", slog.Any("error", err))
 			continue
 		}
+
 		schedules = append(schedules, Schedule{Date: d, Events: events})
 	}
 

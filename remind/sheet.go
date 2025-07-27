@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2/google"
@@ -81,7 +79,12 @@ func (s *SheetSource) Fetch(ctx context.Context, t time.Time) ([]Event, error) {
 		events = append(events, e)
 	}
 
-	filtered := s.filter(events, t)
+	var filtered []Event
+	for _, e := range events {
+		if e.isContain(t) && e.isMatch(t) {
+			filtered = append(filtered, e)
+		}
+	}
 
 	return filtered, nil
 }
@@ -139,38 +142,4 @@ func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
 		Start:    startDate,
 		End:      endDate,
 	}, nil
-}
-
-func (s *SheetSource) filter(events []Event, t time.Time) []Event {
-	var filtered []Event
-
-	for _, e := range events {
-		// 対象となる日付 t が t < e.Start もしくは e.End < t の関係なら除外する
-		if t.Before(e.Start) || t.After(e.End) {
-			continue
-		}
-		// 対象となるイベント e が通知条件にマッチしないなら除外する
-		if !s.isMatch(e, t) {
-			continue
-		}
-		filtered = append(filtered, e)
-	}
-
-	return filtered
-}
-
-func (s *SheetSource) isMatch(event Event, t time.Time) bool {
-	switch strings.ToLower(event.Interval) {
-	case "oneshot":
-		return t.Equal(event.Start)
-	case "weekly":
-		return t.Weekday() == event.Start.Weekday()
-	case "monthly":
-		return t.Day() == event.Start.Day()
-	case "yearly":
-		return t.Month() == event.Start.Month() && t.Day() == event.Start.Day()
-	default:
-		slog.Warn("failed to validate event")
-		return false
-	}
 }

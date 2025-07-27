@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -16,19 +17,26 @@ type EventSource interface {
 	Fetch(ctx context.Context, t time.Time) ([]Event, error)
 }
 
-type Client struct {
-	source EventSource
-}
-
-func NewClient(src EventSource) *Client {
-	return &Client{source: src}
-}
-
-func (c *Client) Do(ctx context.Context, t time.Time) ([]Event, error) {
-	events, err := c.source.Fetch(ctx, t)
-	if err != nil {
-		return nil, err
+func (e *Event) isContain(t time.Time) bool {
+	// t < e.Start もしくは e.End < t なら除外する
+	if t.Before(e.Start) || t.After(e.End) {
+		return false
 	}
 
-	return events, nil
+	return true
+}
+
+func (e *Event) isMatch(t time.Time) bool {
+	switch strings.ToLower(e.Interval) {
+	case "oneshot":
+		return t.Equal(e.Start)
+	case "weekly":
+		return t.Weekday() == e.Start.Weekday()
+	case "monthly":
+		return t.Day() == e.Start.Day()
+	case "yearly":
+		return t.Month() == e.Start.Month() && t.Day() == e.Start.Day()
+	default:
+		return false
+	}
 }
