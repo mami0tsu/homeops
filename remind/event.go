@@ -7,10 +7,10 @@ import (
 )
 
 type Event struct {
-	Name     string
-	Interval string    // e.g. Onetime, Weekly, Monthly, Yearly
-	Start    time.Time // e.g. 2025/01/01
-	End      time.Time // e.g. 2025/12/31
+	Name      string
+	Interval  string    // e.g. Onetime, Weekly, Monthly, Yearly
+	StartDate time.Time // e.g. 2025/01/01
+	EndDate   time.Time // e.g. 2025/12/31
 }
 
 type EventSource interface {
@@ -19,7 +19,7 @@ type EventSource interface {
 
 func (e *Event) isContain(t time.Time) bool {
 	// t < e.Start もしくは e.End < t なら除外する
-	if t.Before(e.Start) || t.After(e.End) {
+	if t.Before(e.StartDate) || t.After(e.EndDate) {
 		return false
 	}
 
@@ -29,13 +29,13 @@ func (e *Event) isContain(t time.Time) bool {
 func (e *Event) isMatch(t time.Time) bool {
 	switch strings.ToLower(e.Interval) {
 	case "oneshot":
-		return t.Equal(e.Start)
+		return t.Equal(e.StartDate)
 	case "weekly":
-		return t.Weekday() == e.Start.Weekday()
+		return t.Weekday() == e.StartDate.Weekday()
 	case "monthly":
-		return t.Day() == e.Start.Day()
+		return t.Day() == e.StartDate.Day()
 	case "yearly":
-		return t.Month() == e.Start.Month() && t.Day() == e.Start.Day()
+		return t.Month() == e.StartDate.Month() && t.Day() == e.StartDate.Day()
 	default:
 		return false
 	}

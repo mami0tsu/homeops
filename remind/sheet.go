@@ -137,9 +137,9 @@ func (s *SheetSource) parseRow(r []interface{}) (Event, error) {
 	}
 
 	return Event{
-		Name:     name,
-		Interval: interval,
-		Start:    startDate,
-		End:      endDate,
+		Name:      name,
+		Interval:  interval,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}, nil
 }

@@ -23,9 +23,9 @@ func (m *MockSheetReader) GetValues(ctx context.Context, spreadsheetID string, r
 var tz = time.FixedZone("JST", 9*60*60)
 
 var testEvents = []Event{
-	{Name: "Active", Start: time.Date(2025, 1, 1, 0, 0, 0, 0, tz), End: time.Date(2025, 1, 30, 0, 0, 0, 0, tz)},
-	{Name: "On End", Start: time.Date(2025, 1, 1, 0, 0, 0, 0, tz), End: time.Date(2025, 1, 10, 0, 0, 0, 0, tz)},
-	{Name: "On Start", Start: time.Date(2025, 1, 21, 0, 0, 0, 0, tz), End: time.Date(2025, 1, 30, 0, 0, 0, 0, tz)},
+	{Name: "Active", StartDate: time.Date(2025, 1, 1, 0, 0, 0, 0, tz), EndDate: time.Date(2025, 1, 30, 0, 0, 0, 0, tz)},
+	{Name: "On End", StartDate: time.Date(2025, 1, 1, 0, 0, 0, 0, tz), EndDate: time.Date(2025, 1, 10, 0, 0, 0, 0, tz)},
+	{Name: "On Start", StartDate: time.Date(2025, 1, 21, 0, 0, 0, 0, tz), EndDate: time.Date(2025, 1, 30, 0, 0, 0, 0, tz)},
 }
 
 func eventsToValueRange(events []Event) *sheets.ValueRange {
@@ -42,8 +42,8 @@ func eventsToValueRange(events []Event) *sheets.ValueRange {
 		row := []interface{}{
 			e.Name,
 			e.Interval,
-			e.Start.Format("2006/01/02"),
-			e.End.Format("2006/01/02"),
+			e.StartDate.Format("2006/01/02"),
+			e.EndDate.Format("2006/01/02"),
 		}
 		values = append(values, row)
 	}
@@ -158,10 +158,10 @@ func TestParseRow(t *testing.T) {
 			row:         []interface{}{"Valid Event", "Daily", "2025/01/01", "2025/01/02"},
 			expectError: false,
 			expected: &Event{
-				Name:     "Valid Event",
-				Interval: "Daily",
-				Start:    time.Date(2025, 1, 1, 0, 0, 0, 0, tz),
-				End:      time.Date(2025, 1, 2, 0, 0, 0, 0, tz),
+				Name:      "Valid Event",
+				Interval:  "Daily",
+				StartDate: time.Date(2025, 1, 1, 0, 0, 0, 0, tz),
+				EndDate:   time.Date(2025, 1, 2, 0, 0, 0, 0, tz),
 			},
 		},
 		{
