@@ -11,15 +11,21 @@ tasks:
     vars:
       app_env: '{{.app_env}}'
       app_name: '{{.app_name}}'
+      build_date:
+        sh: TZ=Asia/Tokyo date +'%Y-%m-%dT%H:%M:%S%z'
       git_commit_hash:
         sh: git rev-parse --short HEAD
+      git_repo_url:
+        sh: git remote get-url origin | sed -e 's/\.git$//'
       image:
         sh: aws ecr describe-repositories --repository-names '{{.app_env}}-{{.app_name}}' --query 'repositories[0].repositoryUri' --output text
       image_tag: '{{.git_commit_hash}}'
     cmds:
       - task: image:build:final
         vars:
+          build_date: '{{.build_date}}'
           git_commit_hash: '{{.git_commit_hash}}'
+          git_repo_url: '{{.git_repo_url}}'
           image: '{{.image}}'
           image_tag: '{{.image_tag}}'
       - task: image:push
@@ -53,7 +59,9 @@ tasks:
   image:build:*:
     internal: true
     vars:
+      build_date: '{{.build_date}}'
       git_commit_hash: '{{.git_commit_hash}}'
+      git_repo_url: '{{.git_repo_url}}'
       image: '{{.image}}'
       image_tag: '{{.image_tag}}'
       target_platform: '{{.target_platform | default "linux/arm64"}}'
@@ -64,6 +72,8 @@ tasks:
           --platform {{.target_platform}} \
           --target {{.target_stage}} \
           --build-arg GIT_COMMIT_HASH={{.git_commit_hash}} \
+          --build-arg GIT_REPO_URL={{.git_repo_url}} \
+          --build-arg BUILD_DATE={{.build_date}} \
           -t {{.image}}:{{.image_tag}} .
 
   image:push:

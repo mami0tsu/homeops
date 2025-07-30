@@ -5,6 +5,8 @@ ARG TARGET_OS=linux
 
 FROM golang:${GO_VERSION}-bookworm AS base
 WORKDIR /src
+ARG TARGET_OS
+ARG TARGET_ARCH
 ENV CGO_ENABLED=0 \
     GOOS=${TARGET_OS} \
     GOARCH=${TARGET_ARCH}
@@ -32,16 +34,20 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     go test
 
 FROM public.ecr.aws/lambda/provided:al2023 AS local
-ARG GIT_COMMIT_HASH
-ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
-COPY --from=build /usr/local/bin/app /usr/local/bin/remind
+COPY --from=build /usr/local/bin/app /usr/local/bin/app
 ENTRYPOINT ["/usr/local/bin/aws-lambda-rie"]
-CMD ["remind"]
+CMD ["app"]
 
 # TODO: 実行時エラー "Runtime.InvalidEntrypoint" の原因を調査する
 # FROM gcr.io/distroless/static-debian12:nonroot-${TARGET_ARCH} AS final
 FROM public.ecr.aws/lambda/provided:al2023 AS final
 ARG GIT_COMMIT_HASH
-ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
-COPY --from=build /usr/local/bin/app /usr/local/bin/remind
-ENTRYPOINT ["remind"]
+ARG GIT_REPO_URL
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="remind" \
+      org.opencontainers.image.description="AWS Lambda 上での実行を想定した、イベント情報をリマインドするアプリ" \
+      org.opencontainers.image.revision="${GIT_COMMIT_HASH}" \
+      org.opencontainers.image.source="${GIT_REPO_URL}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
+COPY --from=build /usr/local/bin/app /usr/local/bin/app
+ENTRYPOINT ["app"]
