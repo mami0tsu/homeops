@@ -1,0 +1,56 @@
+name: create pull request
+
+on:
+  create:
+
+# ワークフローレベルではパーミッションを全て無効化
+permissions: {}
+
+# デフォルトシェルを指定することでパイプエラーを有効化
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    # デフォルトタイムアウト値は 600 なので調整
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: checkout
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: check
+        id: check
+        run: |
+          pr_count="$(gh pr list --head ${{ github.ref_name }} --json number --jq 'length')"
+          if [[ "${pr_count}" -gt 0 ]]; then
+            echo "is-existed=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is-existed=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: generate token
+        id: app-token
+        # v2.0.6
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e
+        with:
+          app_id: ${{ vars.GH_APP_ID }}
+          private_key: ${{ secrets.GH_APP_KEY }}
+
+      # NOTE: github_token で PR を作成するとワークフローがトリガーされないので GitHub App を使用した
+      - name: create
+        if: steps.check.outputs.is-existed == 'false'
+        env:
+          token: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr create \
+            --base "${{ github.repository.default_branch }}" \
+            --title "${{ github.ref_name }}" \
+            --assignee "${{ github.actor }}"
