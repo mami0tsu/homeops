@@ -1,0 +1,109 @@
+name: test go app
+
+on:
+  pull_request:
+    types:
+      - 'opened'
+      - 'syncronize'
+    paths:
+      - '**.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '.github/workflows/test-go*.yaml'
+  push:
+    branches:
+      - 'main'
+    paths:
+      - '**.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '.github/workflows/test-go*.yaml'
+
+# ワークフローレベルではパーミッションを全て無効化
+permissions: {}
+
+# デフォルトシェルを指定することでパイプエラーを有効化
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # デフォルトタイムアウト値は 600 なので調整
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.result.outputs.matrix }}
+    steps:
+      - name: checkout
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: detect workflow changes
+        id: detect-workflow-changes
+        # v46.0.5
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c
+        with:
+          files: .github/workflows/test-go*.yaml
+
+      - name: detect app changes
+        id: detect-app-changes
+        # v46.0.5
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c
+        with:
+          files: |
+            **.go
+            **/go.mod
+            **/go.sum
+          dir_names: true
+          dir_names_max_depth: 1
+
+      - name: result
+        id: result
+        run: |
+          if [[ "${{ steps.detect-workflow-changes.outputs.any_changed}}" == "true" ]]; then
+            # go.modを持つ全てのディレクトリを検索し、JSON配列を生成
+            go_app_dirs_json=$(find . -maxdepth 2 -name "go.mod" -printf "%h\n" | sed 's|^\./||' | jq -R . | jq -s .)
+            echo "matrix=${go_app_dirs_json}" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=${{ steps.detect-app-changes.outputs.matrix }}" >> $GITHUB_OUTPUT
+          fi
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    # デフォルトタイムアウト値は 600 なので調整
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    strategy:
+      fail-safe: false
+      matrix:
+        dir: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - name: checkout
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: setup
+        # v5.5.0
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          go-version-file: '${{ matrix.dir }}/go.mod'
+          cache-dependency-path: '${{ matrix.dir }}/go.sum'
+
+      - name: install
+        working-directory: ${{ matrix.dir }}
+        run: go mod tidy
+
+      - name: test
+        working-directory: ${{ matrix.dir }}
+        run: go test -vet=all -v ./...
