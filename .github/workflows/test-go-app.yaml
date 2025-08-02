@@ -4,7 +4,7 @@ on:
   pull_request:
     types:
       - 'opened'
-      - 'syncronize'
+      - 'synchronize'
     paths:
       - '**.go'
       - '**/go.mod'
@@ -83,7 +83,7 @@ jobs:
     permissions:
       contents: read
     strategy:
-      fail-safe: false
+      fail-fast: false
       matrix:
         dir: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
