@@ -51,6 +51,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr create \
-            --base main \
+            --base "${{ github.repository.default_branch }}" \
             --title "${{ github.ref_name }}" \
             --assignee "${{ github.actor }}"
