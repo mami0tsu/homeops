@@ -20,7 +20,17 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: generate token
+        id: app-token
+        # v2.0.6
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e
+        with:
+          app_id: ${{ vars.GH_APP_ID }}
+          private_key: ${{ secrets.GH_APP_KEY }}
+
       - name: checkout
+        env:
+          token: ${{ steps.app-token.outputs.token }}
         # v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,14 +46,6 @@ jobs:
             echo "is-existed=false" >> "${GITHUB_OUTPUT}"
           fi
 
-      - name: generate token
-        id: app-token
-        # v2.0.6
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e
-        with:
-          app_id: ${{ vars.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_KEY }}
-
       # NOTE: github_token で PR を作成するとワークフローがトリガーされないので GitHub App を使用した
       - name: create
         if: steps.check.outputs.is-existed == 'false'
@@ -51,6 +53,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr create \
+            --fill \
             --base "${{ github.repository.default_branch }}" \
-            --title "${{ github.ref_name }}" \
             --assignee "${{ github.actor }}"
