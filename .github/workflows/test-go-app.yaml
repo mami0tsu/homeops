@@ -68,7 +68,7 @@ jobs:
         run: |
           if [[ "${{ steps.detect-workflow-changes.outputs.any_changed}}" == "true" ]]; then
             # go.modを持つ全てのディレクトリを検索し、JSON配列を生成
-            go_app_dirs_json=$(find . -maxdepth 2 -name "go.mod" -printf "%h\n" | sed 's|^\./||' | jq -R . | jq -s .)
+            go_app_dirs_json=$(find . -maxdepth 2 -name "go.mod" -printf "%h\n" | sed 's|^\./||' | jq -R . | jq -s -c .)
             echo "matrix=${go_app_dirs_json}" >> $GITHUB_OUTPUT
           else
             echo "matrix=${{ steps.detect-app-changes.outputs.matrix }}" >> $GITHUB_OUTPUT
